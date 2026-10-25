@@ -27,12 +27,37 @@ The only user signal is a **vote**. There are no reviews, comments, star ratings
 13. **Location is always user-initiated and opt-in.** Coordinates are used once and never stored. No IP-based location guessing.
 14. **No fake or pre-seeded data in production.** Mock data is for development only and must never ship or be seeded to a production database.
 15. **No background jobs or schedulers.** If a feature seems to need one, find a design that doesn't (compute on read, refresh lazily on view) or ask.
+16. **Ads and analytics never influence rankings or ordering.** No restaurant can pay for placement.
+17. **Never send user identifiers** (user ID, email, display name, home city) **to analytics or ad networks.**
 
 ## Audit log and privacy
 
 - Log vote casts and retractions, restaurant creation and removal, and all admin actions, with timestamp, acting user, and target.
 - **Do not store IP addresses in the database.** IPs exist only in host/server logs.
 - Anything that stores personal data (email, home city/state, third-party sign-in) must be reflected in the privacy policy. The policy must also disclose that server logs contain IP addresses. Flag it if you add something new.
+
+## SEO, analytics, and ads
+
+### SEO (build it in, do not bolt it on)
+- Every public page has a unique title and meta description, a canonical URL, and Open Graph/Twitter metadata.
+- Generate `sitemap.xml` (use a sitemap index as it grows) and `robots.txt`.
+- Add JSON-LD structured data: schema.org `Restaurant` on restaurant pages and `ItemList` on city pages. **Never add `AggregateRating` or review markup.** There are no ratings.
+- City pages with fewer restaurants than the minimum (a config constant, start at 3) must be `noindex` and are indexed automatically once they qualify. The site launches empty, so thin pages must not get indexed.
+- Sort and tab variants (e.g. `?sort=newest`) canonicalize to the base page.
+- When a restaurant is removed, redirect to its city page or return 410. Do not leave broken indexed URLs.
+- Protect Core Web Vitals: fast server-rendered HTML, reserved space for images and ads, no layout shift.
+
+### Analytics and consent
+- Google Analytics 4 with consent mode. **Load it only after consent**, using a lazy script strategy that does not block rendering.
+- Never load analytics on admin pages. Never send user identifiers (rule 17). Anonymous aggregate events (e.g. `vote_cast` without a user ID) are fine.
+- A consent management platform is required (EEA/UK consent, US opt-out, Global Privacy Control). Anything that adds cookies or third-party scripts must be reflected in the privacy policy.
+
+### Ads (built in but off at launch)
+- Render ads only through a single `AdSlot` component with fixed reserved dimensions, controlled by a feature flag that is **off by default**.
+- Ads load only after consent and never block rendering.
+- Never place an ad next to the vote button or other tap targets. Never show ads on sign-in, add-a-place, profile, or admin pages.
+- Serve `ads.txt` from the site root when ads are enabled.
+- If an ad placement hurts Core Web Vitals, remove it.
 
 ## Stack
 

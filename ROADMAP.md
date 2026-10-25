@@ -18,6 +18,7 @@ Mark items done by changing `[ ]` to `[x]`. Add a date and short note to the Don
 - **No fake or pre-seeded data in production.** The site launches empty and earns its reputation. Mock data is for development only.
 - **No background jobs.** Design so nothing needs a scheduler.
 - **All infrastructure is code (Terraform).** No click-ops. Region and provider are variables.
+- **SEO is built in, not bolted on.** Analytics and ads load only after consent, and **ads never influence rankings.**
 
 ---
 
@@ -43,6 +44,10 @@ Mark items done by changing `[ ]` to `[x]`. Add a date and short note to the Don
 | D16 | Background work | **Decided** | None. Stale place data refreshes lazily when viewed, not on a schedule |
 | D17 | Cloud provider and region | **Decided (provider); region open** | **Azure** to start: Container Apps, PostgreSQL Flexible Server (with PostGIS), Container Registry, Key Vault, Log Analytics. Terraform modules are provider-specific, so moving clouds later means rewriting `/infra` and migrating data (days, not a rebuild), because the app is a container with plain Postgres and env-var config. Region is a Terraform variable: pick a US region near users, and verify Flexible Server and PostGIS availability and pricing there first |
 | D18 | Infrastructure as code | **Decided** | Terraform in `/infra` (OpenTofu-compatible code). Remote state with locking, separate dev/staging/prod environments, no secrets or state in git, plan on every PR. **Apply is run by the owner or an approved pipeline step, never automatically by an AI assistant** |
+| D19 | SEO | **Decided** | Server-rendered pages, unique titles/descriptions, canonical URLs, sitemap + robots, schema.org structured data (Restaurant, ItemList), Open Graph cards. **No fake ratings markup** (we have no ratings). Pages below a minimum restaurant count (configurable, start at 3) are `noindex` until they qualify |
+| D20 | Analytics | **Decided** | Google Analytics 4 with consent mode, loaded only after consent. Plus Google Search Console. No user IDs, emails, or home city sent to analytics. Not on admin pages |
+| D21 | Monetization | **Decided (approach)** | Third-party display ads (network TBD, AdSense is the likely start). Ad slots built into the layout from the start behind a feature flag, **off at launch**. Enable after launch once there is content, traffic, and network approval. Ads never affect ranking. Restaurant-paid placement is **not** planned (backlog, conflicts with the vote-only principle) |
+| D22 | Consent | **Decided** | A consent management platform is required for analytics and ads, including EEA/UK handling and US opt-out/Global Privacy Control. Privacy policy covers cookies, analytics, and advertising |
 
 ---
 
@@ -111,6 +116,23 @@ Mark items done by changing `[ ]` to `[x]`. Add a date and short note to the Don
 - [ ] Loading skeletons
 - [ ] 404 and error pages
 
+### SEO foundations (built in from the start)
+- [ ] Unique `<title>` and meta description for every public page (landing, city, restaurant)
+- [ ] Canonical URLs; sort/tab variants (`?sort=newest`) canonicalize to the base page
+- [ ] `sitemap.xml` (sitemap index split by state/city as it grows) and `robots.txt`
+- [ ] Structured data (JSON-LD): schema.org `Restaurant` on restaurant pages (name, address, phone, hours, geo) and `ItemList` on city pages. No `AggregateRating`
+- [ ] Open Graph and Twitter card metadata
+- [ ] `noindex` for city pages below the minimum restaurant count (config constant), indexed automatically once they qualify
+- [ ] Internal linking: landing, state, city, restaurant, and nearby cities
+- [ ] Sensible handling when a restaurant is removed (redirect to its city page or return 410)
+- [ ] Core Web Vitals budget (fast load, no layout shift) checked on mobile
+- [ ] State pages (e.g. `/s/ohio`) listing cities that qualify for indexing
+
+### Monetization-ready layout
+- [ ] `AdSlot` component with reserved dimensions (no layout shift), **disabled by a feature flag**
+- [ ] Defined placements (e.g. between list items on city pages, bottom of restaurant page). Never adjacent to the vote button or other tap targets, and never on sign-in, add-a-place, profile, or admin pages
+- [ ] Ad and analytics scripts load only after consent and never block rendering
+
 ### Quality
 - [ ] Mobile-first layout verified on real devices
 - [ ] Accessibility pass (contrast, focus, labels, keyboard)
@@ -158,9 +180,12 @@ Needed before real sign-in testing (Google and Apple require real redirect URLs)
 - [ ] Admin: ban an account (provider ID + email); unban
 - [ ] Admin access protected (separate role, strong auth)
 - [ ] Confirm the log retention set in Terraform matches what the privacy policy says
-- [ ] **Privacy policy** (must disclose: server logs include IP addresses and are kept per the host's retention; home city/state storage; third-party sign-in; email)
+- [ ] **Privacy policy** (must disclose: server logs include IP addresses and are kept per the host's retention; home city/state storage; third-party sign-in; email; cookies and analytics; advertising and ad partners; how to opt out)
 - [ ] Terms of service
-- [ ] Cookie/consent handling if required
+- [ ] Consent management platform (analytics and ads): EEA/UK consent, US opt-out and Global Privacy Control signal
+- [ ] Google Analytics 4 with consent mode; verify no user identifiers are sent
+- [ ] Google Search Console verified; sitemap submitted
+- [ ] Serve `ads.txt` from the site root (when ads are enabled)
 - [ ] Contact/abuse-report email
 
 ## Phase 4 — Location (post-MVP)
@@ -175,11 +200,24 @@ All location features are **user-initiated and opt-in**.
 - [ ] Graceful behavior when permission is denied
 - [ ] No IP-based location guessing
 
+## Phase 5 — Monetization (post-launch)
+
+- [ ] Wait for real content and traffic; confirm enough indexed pages to pass ad network review
+- [ ] Apply to an ad network (AdSense likely first); keep the site clean and policy-compliant while waiting
+- [ ] Add ad network scripts through the consent flow and publish `ads.txt`
+- [ ] Turn on `AdSlot` placements via the feature flag, one placement at a time
+- [ ] Measure Core Web Vitals before and after; remove any placement that hurts them
+- [ ] Review ad categories and quality controls
+- [ ] Track revenue vs. cost (hosting, database, ad-related performance impact)
+
 ## Launch Checklist
 
 - [ ] Production contains **no mock data**
 - [ ] Privacy policy and terms published
 - [ ] Audit log and admin tools working
+- [ ] Search Console verified, sitemap submitted, thin city pages confirmed `noindex`
+- [ ] Consent banner working; no analytics or ad scripts load before consent
+- [ ] Ads feature flag is **off**
 - [ ] Domain and name settled (D8)
 - [ ] Production infrastructure applied from Terraform only; backups restore-tested; budget alerts on
 - [ ] Empty states reviewed on mobile
@@ -215,6 +253,7 @@ All location features are **user-initiated and opt-in**.
 - [ ] Optional one-dish "what to order" field (decide if it conflicts with "no comments")
 - [ ] Claim this restaurant (owner corrects hours/phone, cannot vote or affect rank)
 - [ ] Admin tool to merge duplicates
+- [ ] Restaurant-sponsored listings (conflicts with the vote-only principle and ranking integrity; decide carefully, if ever)
 
 ### Personal tools
 - [ ] Save / want-to-try list (private, separate from votes)
@@ -330,3 +369,4 @@ All location features are **user-initiated and opt-in**.
 | 2026-10-24 | `CLAUDE.md` rewritten for the new stack | |
 | 2026-10-24 | Terraform added (D18); hosting moved to containers (D6); Phase 1.5 Infrastructure added | |
 | 2026-10-24 | D17 decided: Azure | Region still open |
+| 2026-10-24 | SEO, analytics, ads, and consent added (D19-D22); Phase 5 Monetization added | Ads off at launch |
